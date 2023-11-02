@@ -1,0 +1,7 @@
+DB_USER="root"
+DB_PASSWORD="my-secret-pw"
+DB_HOST="localhost"
+DB_PORT=3306
+
+RABBITMQ_HOST="localhost"
+RABBITMQ_PORT=5672
