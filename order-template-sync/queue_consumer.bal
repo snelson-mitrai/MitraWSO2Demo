@@ -1,13 +1,15 @@
 import ballerina/log;
-// import ballerina/mime;
-// import ballerina/soap.soap12;
+import ballerina/mime;
+import ballerina/soap.soap12;
 import ballerinax/rabbitmq;
 
+rabbitmq:ConnectionConfiguration config = {username: RABBITMQ_USER, password: RABBITMQ_PW, virtualHost: RABBITMQ_VHOST};
+        
 @rabbitmq:ServiceConfig {
     queueName: queueName,
     autoAck: false
 }
-service rabbitmq:Service on new rabbitmq:Listener(RABBITMQ_HOST, RABBITMQ_PORT) {
+service rabbitmq:Service on new rabbitmq:Listener(RABBITMQ_HOST, RABBITMQ_PORT, connectionData = config) {
     remote function onMessage(TaskMessage message, rabbitmq:Caller caller) returns error? {
         do {
             IntegrationTask task = message.content.integrationTask;
@@ -24,18 +26,16 @@ service rabbitmq:Service on new rabbitmq:Listener(RABBITMQ_HOST, RABBITMQ_PORT) 
 }
 
 function performSyncOnMinfos(IO_DWH_OrderTemplate taskData) returns error? {
-    // todo
-    // soap12:Client soapClient = check new ("http://www.dneonline.com/calculator.asmx?WSDL");
+    soap12:Client soapClient = check new ("localhost:8086");
 
-    // xml envelope =
-    //     xml `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" soap:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    //         <soap:Body>
-    //         <quer:Add xmlns:quer="http://tempuri.org/">
-    //         <quer:intA>2</quer:intA>
-    //         <quer:intB>3</quer:intB>
-    //         </quer:Add>
-    //         </soap:Body>
-    //         </soap:Envelope>`;
-    // xml|mime:Entity[] response = check soapClient->sendReceive(envelope, "http://tempuri.org/Add");
+    xml envelope =
+        xml `<soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:GetOrderTemplates/>
+   </soapenv:Body>
+</soapenv:Envelope>`;
+    xml|mime:Entity[] response = check soapClient->sendReceive(envelope, "http://tempuri.org/IOrdersService/GetOrderTemplates");
     log:printInfo("Sync on MINFOS completed.");
 }
+

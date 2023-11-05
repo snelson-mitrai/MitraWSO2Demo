@@ -1,22 +1,33 @@
-// todo!
-
 import ballerina/http;
 import ballerina/log;
-import ballerina/mime;
 
 configurable int port = 8086;
 
 final xml & readonly mockPayload =
-    xml `<soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope" xmlns:nst="http://www.example.com/mynamespace">
-   <soapenv:Header>
-      <!-- You can include header elements here if needed -->
-   </soapenv:Header>
+    xml `<soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope" xmlns:tem="http://tempuri.org/" xmlns:nup="http://schemas.datacontract.org/2004/07/NuPro.Midas.Services.Orders.Models">
+   <soapenv:Header/>
    <soapenv:Body>
-      <nst:MyMockOperation>
-         <nst:Parameter1>MockValue1</nst:Parameter1>
-         <nst:Parameter2>MockValue2</nst:Parameter2>
-         <!-- Add more mock parameters as needed -->
-      </nst:MyMockOperation>
+      <tem:GetOrderTemplatesResponse>
+         <!--Optional:-->
+         <tem:GetOrderTemplatesResult>
+            <!--Optional:-->
+            <nup:Templates>
+               <!--Zero or more repetitions:-->
+               <nup:OrderTemplate>
+                  <!--Optional:-->
+                  <nup:Created>2023-11-03T00:00:00.000+05:00</nup:Created>
+                  <!--Optional:-->
+                  <nup:Description>Test Descriptiomn</nup:Description>
+                  <!--Optional:-->
+                  <nup:Frequency>Test</nup:Frequency>
+                  <!--Optional:-->
+                  
+                  <!--Optional:-->
+                  <nup:NextRunDate>2023-11-08T00:00:00.000+05:00</nup:NextRunDate><nup:Supplier>Test supplier</nup:Supplier>
+               </nup:OrderTemplate>
+            </nup:Templates>
+         </tem:GetOrderTemplatesResult>
+      </tem:GetOrderTemplatesResponse>
    </soapenv:Body>
 </soapenv:Envelope>`;
 
@@ -25,23 +36,11 @@ final xml & readonly mockPayload =
     id: "MINFOS POS Service"
 }
 service on new http:Listener(port) {
-    resource function default [string... paths](@http:Header {name: mime:CONTENT_TYPE} string contentTypeHeader,
+    resource function default [string... paths](@http:Header {name: "SOAPAction"} string soapAction,
             xml payload) returns xml|http:BadRequest {
 
-        string? soapAction = ();
         do {
-            foreach string component in re `;`.split(contentTypeHeader) {
-                string trimmedComponent = component.trim();
-                if trimmedComponent.startsWith("action=") {
-                    soapAction = trimmedComponent.substring(7, trimmedComponent.length());
-                    log:printInfo("SOAP action:  " + soapAction.toString());
-                    break;
-                }
-            }
-
-            if soapAction is () {
-                fail error("Failed to find the operation.");
-            }
+            log:printInfo("SOAP action: " + soapAction);
         } on fail {
             log:printError("Expected a SOAP request, cannot find SOAP action.");
             return <http:BadRequest>{body: "expected a SOAP request"};
@@ -55,3 +54,4 @@ service on new http:Listener(port) {
         return mockPayload;
     }
 }
+

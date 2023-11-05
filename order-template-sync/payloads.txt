@@ -1,0 +1,9 @@
+{
+    "eventID": 123123123,
+    "templateID": 3454,
+    "timestamp": 1513299569,
+    "eventType": "ORDER_TEMPLATE_SYNC",
+    "status": "INIT",
+    "origin":"ADF",
+    "category": "ORDER_LIFECYCLE"
+}
