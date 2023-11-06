@@ -1,19 +1,36 @@
-# Use the official Ballerina base image
-FROM ballerina/ballerina:latest
+# Builder stage
+FROM ballerina/ballerina:latest AS builder
 
-# Set the working directory inside the container
-WORKDIR /app
 
-# Copy the Ballerina code into the working directory
+# Set the working directory in the builder stage
+WORKDIR /home/ballerina
+
+# Copy the Ballerina code to the working directory
 COPY . .
 
 # Compile the Ballerina program
-# If you have a Ballerina project with ballerina.toml, use `bal build`.
+# As 'ballerina' user
+USER root
 RUN bal build
+# Runtime stage
+FROM ballerina/ballerina:latest
+
+
+# Set the working directory in the runtime stage
+WORKDIR /home/ballerina
+
+# Copy the compiled package from the builder stage
+COPY --from=builder /home/ballerina/target/bin/soapservice.jar .
+
+# Change ownership to the ballerina user
+#RUN chown ballerina:ballerina soapservice.jar
+
+# Switch to ballerina user
+USER ballerina
 
 # Expose the service port
 EXPOSE 8086
 
-# Run the compiled Ballerina service
-CMD ["bal", "run"]
+# Command to run the Ballerina service
+CMD ["bal", "run", "soapservice.jar"]
 
