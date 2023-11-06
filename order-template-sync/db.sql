@@ -1,3 +1,6 @@
+create database Integration;
+create database IO_DWH;
+
 CREATE TABLE Integration.Task (
      TaskID INT AUTO_INCREMENT,
      CreatedDatetime DATETIME,
@@ -43,3 +46,8 @@ CREATE TABLE IO_DWH.OrderTemplate (
     ZFactor INT,
     PRIMARY KEY (TemplateID)
 );
+
+
+INSERT INTO IO_DWH.OrderTemplate (TemplateID, Category, CategoryRangeEnd, CategoryRangeStart, CompanyRangeEnd, CompanyRangeStart, DeliveryTime, Description, IncludeBuyingDeals, IncludeNegatives, IncludeOutOfStocks, IncludeUncollectedScripts, OrderContent, OrderPeriodDays, OrderType, RoundUpAfter, RunDate, RunFrequency, ShelfPackRound, Supplier, UseDefaultSuppliers, ZFactor) VALUES (234, 'BRAND', 10, 5, 100, 40, 14, 'The order template that captures Rosuvastin 5 mg water soluable film coated tablets', 1, 1, 1, 0, 'RETAIL', 14, 'NORMAL', 10, '2023-11-02', 'FORTNIGHTY', 10, 'Mylan Australia QLD', 1, 0);
+INSERT INTO IO_DWH.OrderTemplate (TemplateID, Category, CategoryRangeEnd, CategoryRangeStart, CompanyRangeEnd, CompanyRangeStart, DeliveryTime, Description, IncludeBuyingDeals, IncludeNegatives, IncludeOutOfStocks, IncludeUncollectedScripts, OrderContent, OrderPeriodDays, OrderType, RoundUpAfter, RunDate, RunFrequency, ShelfPackRound, Supplier, UseDefaultSuppliers, ZFactor) VALUES (345, 'BRAND', 10, 5, 100, 40, 14, 'The order template that captures Rosuvastin 5 mg water soluable film coated tablets', 1, 1, 1, 0, 'RETAIL', 14, 'NORMAL', 10, '2023-11-02', 'FORTNIGHTY', 10, 'Mylan Australia QLD', 1, 0);
+INSERT INTO IO_DWH.OrderTemplate (TemplateID, Category, CategoryRangeEnd, CategoryRangeStart, CompanyRangeEnd, CompanyRangeStart, DeliveryTime, Description, IncludeBuyingDeals, IncludeNegatives, IncludeOutOfStocks, IncludeUncollectedScripts, OrderContent, OrderPeriodDays, OrderType, RoundUpAfter, RunDate, RunFrequency, ShelfPackRound, Supplier, UseDefaultSuppliers, ZFactor) VALUES (456, 'BRAND', 10, 5, 100, 40, 14, 'The order template that captures Rosuvastin 5 mg water soluable film coated tablets', 1, 1, 1, 0, 'RETAIL', 14, 'NORMAL', 10, '2023-11-02', 'FORTNIGHTY', 10, 'Mylan Australia QLD', 1, 0);
