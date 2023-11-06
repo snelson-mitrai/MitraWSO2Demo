@@ -43,7 +43,7 @@ function declareQueueAndExchange(rabbitmq:Client taskQueueClient) returns error?
         "x-expires": 800000,
         "x-max-retries": 3
     };
-    check taskQueueClient->queueDeclare(queueName, {arguments});
+    check taskQueueClient->queueDeclare(queueName);
 }
 
 type TaskMessage record {|
