@@ -1,6 +1,4 @@
 import ballerina/log;
-import ballerina/mime;
-import ballerina/soap.soap12;
 import ballerinax/rabbitmq;
 
 rabbitmq:ConnectionConfiguration config = {username: RABBITMQ_USER, password: RABBITMQ_PW, virtualHost: RABBITMQ_VHOST};
@@ -18,7 +16,7 @@ service rabbitmq:Service on new rabbitmq:Listener(RABBITMQ_HOST, RABBITMQ_PORT, 
             check caller->basicAck();
             check updateIntegrationLogTable(task.TaskId, "Complete", task.Scope);
         } on fail error taskError {
-           // check caller->basicNack(requeue = true);
+            check caller->basicNack(requeue = true);
             log:printError(string `Error occurred while processing the task: ${taskError.message()}. Re-queuing the task.`, taskError);
             return taskError;
         }
@@ -26,16 +24,6 @@ service rabbitmq:Service on new rabbitmq:Listener(RABBITMQ_HOST, RABBITMQ_PORT, 
 }
 
 function performSyncOnMinfos(IO_DWH_OrderTemplate taskData) returns error? {
-    soap12:Client soapClient = check new ("localhost:8086");
-
-    xml envelope =
-        xml `<soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope" xmlns:tem="http://tempuri.org/">
-   <soapenv:Header/>
-   <soapenv:Body>
-      <tem:GetOrderTemplates/>
-   </soapenv:Body>
-</soapenv:Envelope>`;
-    xml|mime:Entity[] response = check soapClient->sendReceive(envelope, "http://tempuri.org/IOrdersService/GetOrderTemplates");
-    log:printInfo("Sync on MINFOS completed.");
+    log:printInfo("Performed sync on MINFOS - TBD");
 }
 
