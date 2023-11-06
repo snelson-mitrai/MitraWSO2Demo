@@ -18,7 +18,7 @@ service rabbitmq:Service on new rabbitmq:Listener(RABBITMQ_HOST, RABBITMQ_PORT, 
             check caller->basicAck();
             check updateIntegrationLogTable(task.TaskId, "Complete", task.Scope);
         } on fail error taskError {
-            check caller->basicNack(requeue = true);
+           // check caller->basicNack(requeue = true);
             log:printError(string `Error occurred while processing the task: ${taskError.message()}. Re-queuing the task.`, taskError);
             return taskError;
         }
