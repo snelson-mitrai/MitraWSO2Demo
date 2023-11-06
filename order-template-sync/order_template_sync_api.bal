@@ -46,7 +46,7 @@ configurable string RABBITMQ_VHOST = ?;
 configurable string DB_USER = ?;
 configurable string DB_PASSWORD = ?;
 configurable string DB_HOST = ?;
-configurable int DB_PORT = ?;
+int DB_PORT = 3306;
 
 type TaskMessage record {|
     *rabbitmq:AnydataMessage;
