@@ -7,12 +7,12 @@ import ballerinax/mysql.driver as _;
 import ballerinax/rabbitmq;
 
 service / on new http:Listener(8080) {
-    private final rabbitmq:Client taskQueueClient;
+    private final rabbitmq:Client rabbitmqConnection;
 
     function init() returns error? {
         rabbitmq:ConnectionConfiguration config = {username: RABBITMQ_USER, password: RABBITMQ_PW, virtualHost: RABBITMQ_VHOST};
-        self.taskQueueClient = check new (RABBITMQ_HOST, RABBITMQ_PORT, config);
-        check self.taskQueueClient->queueDeclare(queueName);
+        self.rabbitmqConnection = check new (RABBITMQ_HOST, RABBITMQ_PORT, config);
+        check self.rabbitmqConnection->queueDeclare(queueName);
     }
 
     isolated resource function post .(@http:Payload EventData event) returns error? {
@@ -26,7 +26,7 @@ service / on new http:Listener(8080) {
             content: {integrationTask: orderTemplateSyncTask, updatedTemplate: updatedTemplate},
             routingKey: queueName
         };
-        error? queueResult = self.taskQueueClient->publishMessage(taskMessage);
+        error? queueResult = self.rabbitmqConnection->publishMessage(taskMessage);
         if queueResult is error {
             log:printError(string `Error occurred while queuing the task: ${queueResult.message()}`, queueResult);
             return queueResult;
