@@ -16,7 +16,7 @@ service / on new http:Listener(8080) {
         log:printInfo("Listening on order template sync tasks.");
     }
 
-    isolated resource function post .(@http:Payload EventData event) returns error? {
+    isolated resource function post .(@http:Payload EventData event) returns string|error {
         IntegrationTask orderTemplateSyncTask = check lookUpIntegrationTaskTable(event);
         log:printInfo("Order template sync task received.");
 
@@ -32,6 +32,8 @@ service / on new http:Listener(8080) {
             log:printError(string `Error occurred while queuing the task: ${queueResult.message()}`, queueResult);
             return queueResult;
         }
+        
+        return "success";
     }
 }
 
