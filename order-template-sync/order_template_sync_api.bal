@@ -24,6 +24,9 @@ service / on new http:Listener(8080) {
         check updateIntegrationLogTable(orderTemplateSyncTask.TaskId, "In-Progress", orderTemplateSyncTask.Scope);
 
         IO_DWH_OrderTemplate updatedTemplate = check lookUpUpdatedOrderTemplate(event.templateID);
+
+        log:printInfo("found the order template", orderTemplate = updatedTemplate);
+
         TaskMessage taskMessage = {
             content: {integrationTask: orderTemplateSyncTask, updatedTemplate: updatedTemplate},
             routingKey: QUEUE_NAME
@@ -133,16 +136,9 @@ isolated function lookUpIntegrationTaskTable(EventData event) returns Integratio
 }
 
 isolated function updateIntegrationLogTable(int taskID, string status, string scope) returns error? {
-    IntegrationLog log = {
-        TaskID: taskID,
-        Status: status,
-        Scope: scope,
-        Timestamp: time:utcNow()
-    };
-
     sql:ExecutionResult result = check integrationDbClient->execute(`
         INSERT INTO Log (TaskID, Status, Scope, Timestamp)
-        VALUES (${log.TaskID}, ${log.Status}, ${log.Scope}, ${log.Timestamp})
+        VALUES (${taskID}, ${status}, ${scope}, ${time:utcNow()})
     `);
     int|string? lastInsertId = result.lastInsertId;
     if lastInsertId is int {
