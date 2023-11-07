@@ -7,7 +7,7 @@ import ballerina/sql;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
 
-configurable string  queueName = "TaskQueue";
+configurable string  QUEQUE_NAME = "TaskQueue";
 configurable string MOCKSERVER_URL = ?;
 configurable int RABBITMQ_PORT = ?;
 configurable string RABBITMQ_HOST = ?;
@@ -25,7 +25,7 @@ rabbitmq:ConnectionConfiguration config = {username: RABBITMQ_USER, password: RA
 xmlns "http://schemas.datacontract.org/2004/07/NuPro.Midas.Services.Orders.Models" as nup;
 
 @rabbitmq:ServiceConfig {
-    queueName: queueName,
+    queueName: QUEQUE_NAME,
     autoAck: false
 }
 service rabbitmq:Service on new rabbitmq:Listener(RABBITMQ_HOST, RABBITMQ_PORT, connectionData = config) {
