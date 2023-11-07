@@ -13,6 +13,7 @@ service / on new http:Listener(8080) {
         rabbitmq:ConnectionConfiguration config = {username: RABBITMQ_USER, password: RABBITMQ_PW, virtualHost: RABBITMQ_VHOST};
         self.rabbitmqConnection = check new (RABBITMQ_HOST, RABBITMQ_PORT, config);
         check self.rabbitmqConnection->queueDeclare(queueName);
+        log:printInfo("Listening on order template sync tasks.");
     }
 
     isolated resource function post .(@http:Payload EventData event) returns error? {

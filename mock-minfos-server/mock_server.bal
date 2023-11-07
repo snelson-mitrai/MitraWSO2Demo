@@ -41,7 +41,8 @@ final xml & readonly mockGetTemplatesPayload =
                   <nup:Created>2023-11-06T00:00:00.000+05:00</nup:Created>
                   <nup:Description>The order template that captures Rosuvastin 6mg water soluable  film coated tablets</nup:Description>
                   <nup:Frequency>FORTNIGHTY</nup:Frequency>
-                  <nup:NextRunDate>2023-11-30T00:00:00.000+05:00</nup:NextRunDate><nup:Supplier>Mylan Australia QLD</nup:Supplier>
+                  <nup:NextRunDate>2023-11-30T00:00:00.000+05:00</nup:NextRunDate>
+                  <nup:Supplier>Mylan Australia QLD</nup:Supplier>
                </nup:OrderTemplate>
             </nup:Templates>
          </tem:GetOrderTemplatesResult>
