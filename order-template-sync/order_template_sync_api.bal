@@ -12,7 +12,7 @@ service / on new http:Listener(8080) {
     function init() returns error? {
         rabbitmq:ConnectionConfiguration config = {username: RABBITMQ_USER, password: RABBITMQ_PW, virtualHost: RABBITMQ_VHOST};
         self.rabbitmqConnection = check new (RABBITMQ_HOST, RABBITMQ_PORT, config);
-        check self.rabbitmqConnection->queueDeclare(queueName);
+        check self.rabbitmqConnection->queueDeclare(QUEUE_NAME);
         log:printInfo("Listening on order template sync tasks.");
     }
 
@@ -25,7 +25,7 @@ service / on new http:Listener(8080) {
         IO_DWH_OrderTemplate updatedTemplate = check lookUpUpdatedOrderTemplate(event.templateID);
         TaskMessage taskMessage = {
             content: {integrationTask: orderTemplateSyncTask, updatedTemplate: updatedTemplate},
-            routingKey: queueName
+            routingKey: QUEUE_NAME
         };
         error? queueResult = self.rabbitmqConnection->publishMessage(taskMessage);
         if queueResult is error {
@@ -38,7 +38,7 @@ service / on new http:Listener(8080) {
 }
 
 const taskType = "Order Template Sync";
-configurable string  queueName = "TaskQueue";
+configurable string  QUEUE_NAME = "q_order_template_sync";
 
 configurable int RABBITMQ_PORT = ?;
 configurable string RABBITMQ_HOST = ?;
