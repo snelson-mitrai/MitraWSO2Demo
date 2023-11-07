@@ -7,7 +7,7 @@ import ballerina/sql;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
 
-const queueName = "TaskQueue";
+configurable string  queueName = "TaskQueue";
 configurable string MOCKSERVER_URL = ?;
 configurable int RABBITMQ_PORT = ?;
 configurable string RABBITMQ_HOST = ?;
