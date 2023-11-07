@@ -32,7 +32,6 @@ service / on new http:Listener(8080) {
             log:printError(string `Error occurred while queuing the task: ${queueResult.message()}`, queueResult);
             return queueResult;
         }
-        check self.rabbitmqConnection->close();
     }
 }
 
