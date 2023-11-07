@@ -48,6 +48,8 @@ configurable string DB_USER = ?;
 configurable string DB_PASSWORD = ?;
 configurable string DB_HOST = ?;
 int DB_PORT = 3306;
+configurable string INTEGRATION_DB = ?;
+configurable string IO_DWH_DB = ?;
 
 type TaskMessage record {|
     *rabbitmq:AnydataMessage;
@@ -113,11 +115,11 @@ type IO_DWH_OrderTemplate record {|
 |};
 
 final mysql:Client integrationDbClient = check new (
-    host = DB_HOST, user = DB_USER, password = DB_PASSWORD, port = DB_PORT, database = "Integration"
+    host = DB_HOST, user = DB_USER, password = DB_PASSWORD, port = DB_PORT, database = INTEGRATION_DB
 );
 
 final mysql:Client IO_DWHDbClient = check new (
-    host = DB_HOST, user = DB_USER, password = DB_PASSWORD, port = DB_PORT, database = "IO_DWH"
+    host = DB_HOST, user = DB_USER, password = DB_PASSWORD, port = DB_PORT, database = IO_DWH_DB
 );
 
 isolated function lookUpIntegrationTaskTable(EventData event) returns IntegrationTask|error {
