@@ -36,7 +36,7 @@ service / on new http:Listener(8080) {
 }
 
 const taskType = "Order Template Sync";
-const queueName = "TaskQueue";
+configurable string  queueName = "TaskQueue";
 
 configurable int RABBITMQ_PORT = ?;
 configurable string RABBITMQ_HOST = ?;
