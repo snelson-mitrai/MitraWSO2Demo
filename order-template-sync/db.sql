@@ -1,5 +1,6 @@
 create database Integration;
-create database IO_DWH;
+use Integration;
+
 
 CREATE TABLE Integration.Task (
      TaskID INT AUTO_INCREMENT,
@@ -20,6 +21,11 @@ CREATE TABLE Integration.Log (
      Timestamp DATETIME,
      PRIMARY KEY (LogID)
 );
+
+INSERT INTO Task(CreatedDatetime, ModifiedDatetime, ValidFromUTC, ValidToUTC, Type, Scope) VALUES ('2023-10-29 10:00:00', '2023-10-29 11:30:00', '2023-10-29 12:45:00', '2023-12-29 14:15:00', 'Order Template Sync', 'All stores');
+
+create database IO_DWH;
+use IO_DWH;
 
 CREATE TABLE IO_DWH.OrderTemplate (
     TemplateID INT,
@@ -48,8 +54,7 @@ CREATE TABLE IO_DWH.OrderTemplate (
 );
 
 
-INSERT INTO IO_DWH.OrderTemplate (TemplateID, Category, CategoryRangeEnd, CategoryRangeStart, CompanyRangeEnd, CompanyRangeStart, DeliveryTime, Description, IncludeBuyingDeals, IncludeNegatives, IncludeOutOfStocks, IncludeUncollectedScripts, OrderContent, OrderPeriodDays, OrderType, RoundUpAfter, RunDate, RunFrequency, ShelfPackRound, Supplier, UseDefaultSuppliers, ZFactor) VALUES (234, 'BRAND', 10, 5, 100, 40, 14, 'The order template that captures Rosuvastin 5 mg water soluable film coated tablets', 1, 1, 1, 0, 'RETAIL', 14, 'NORMAL', 10, '2023-11-02', 'FORTNIGHTY', 10, 'Mylan Australia QLD', 1, 0);
-INSERT INTO IO_DWH.OrderTemplate (TemplateID, Category, CategoryRangeEnd, CategoryRangeStart, CompanyRangeEnd, CompanyRangeStart, DeliveryTime, Description, IncludeBuyingDeals, IncludeNegatives, IncludeOutOfStocks, IncludeUncollectedScripts, OrderContent, OrderPeriodDays, OrderType, RoundUpAfter, RunDate, RunFrequency, ShelfPackRound, Supplier, UseDefaultSuppliers, ZFactor) VALUES (345, 'BRAND', 10, 5, 100, 40, 14, 'The order template that captures Rosuvastin 5 mg water soluable film coated tablets', 1, 1, 1, 0, 'RETAIL', 14, 'NORMAL', 10, '2023-11-02', 'FORTNIGHTY', 10, 'Mylan Australia QLD', 1, 0);
-INSERT INTO IO_DWH.OrderTemplate (TemplateID, Category, CategoryRangeEnd, CategoryRangeStart, CompanyRangeEnd, CompanyRangeStart, DeliveryTime, Description, IncludeBuyingDeals, IncludeNegatives, IncludeOutOfStocks, IncludeUncollectedScripts, OrderContent, OrderPeriodDays, OrderType, RoundUpAfter, RunDate, RunFrequency, ShelfPackRound, Supplier, UseDefaultSuppliers, ZFactor) VALUES (456, 'BRAND', 10, 5, 100, 40, 14, 'The order template that captures Rosuvastin 5 mg water soluable film coated tablets', 1, 1, 1, 0, 'RETAIL', 14, 'NORMAL', 10, '2023-11-02', 'FORTNIGHTY', 10, 'Mylan Australia QLD', 1, 0);
+INSERT INTO OrderTemplate (TemplateID, Category, CategoryRangeEnd, CategoryRangeStart, CompanyRangeEnd, CompanyRangeStart, DeliveryTime, Description, IncludeBuyingDeals, IncludeNegatives, IncludeOutOfStocks, IncludeUncollectedScripts, OrderContent, OrderPeriodDays, OrderType, RoundUpAfter, RunDate, RunFrequency, ShelfPackRound, Supplier, UseDefaultSuppliers, ZFactor) VALUES (234, 'BRAND', 10, 5, 100, 40, 14, 'The order template that captures Rosuvastin 5 mg water soluable film coated tablets', 1, 1, 1, 0, 'RETAIL', 14, 'NORMAL', 10, '2023-11-02', 'FORTNIGHTY', 10, 'Mylan Australia QLD', 1, 0);
+INSERT INTO OrderTemplate (TemplateID, Category, CategoryRangeEnd, CategoryRangeStart, CompanyRangeEnd, CompanyRangeStart, DeliveryTime, Description, IncludeBuyingDeals, IncludeNegatives, IncludeOutOfStocks, IncludeUncollectedScripts, OrderContent, OrderPeriodDays, OrderType, RoundUpAfter, RunDate, RunFrequency, ShelfPackRound, Supplier, UseDefaultSuppliers, ZFactor) VALUES (345, 'BRAND', 10, 5, 100, 40, 14, 'The order template that captures Rosuvastin 5 mg water soluable film coated tablets', 1, 1, 1, 0, 'RETAIL', 14, 'NORMAL', 10, '2023-11-02', 'FORTNIGHTY', 10, 'Mylan Australia QLD', 1, 0);
+INSERT INTO OrderTemplate (TemplateID, Category, CategoryRangeEnd, CategoryRangeStart, CompanyRangeEnd, CompanyRangeStart, DeliveryTime, Description, IncludeBuyingDeals, IncludeNegatives, IncludeOutOfStocks, IncludeUncollectedScripts, OrderContent, OrderPeriodDays, OrderType, RoundUpAfter, RunDate, RunFrequency, ShelfPackRound, Supplier, UseDefaultSuppliers, ZFactor) VALUES (456, 'BRAND', 10, 5, 100, 40, 14, 'The order template that captures Rosuvastin 5 mg water soluable film coated tablets', 1, 1, 1, 0, 'RETAIL', 14, 'NORMAL', 10, '2023-11-02', 'FORTNIGHTY', 10, 'Mylan Australia QLD', 1, 0);
 
-INSERT INTO Integration.Task(CreatedDatetime, ModifiedDatetime, ValidFromUTC, ValidToUTC, Type, Scope) VALUES ('2023-10-29 10:00:00', '2023-10-29 11:30:00', '2023-10-29 12:45:00', '2023-12-29 14:15:00', 'Order Template Sync', 'All stores');
