@@ -7,7 +7,7 @@ import ballerina/sql;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
 
-configurable string  QUEQUE_NAME = "TaskQueue";
+configurable string  QUEQUE_NAME = "q_order_template_sync";
 configurable string MOCKSERVER_URL = ?;
 configurable int RABBITMQ_PORT = ?;
 configurable string RABBITMQ_HOST = ?;
@@ -32,13 +32,13 @@ service rabbitmq:Service on new rabbitmq:Listener(RABBITMQ_HOST, RABBITMQ_PORT, 
     remote function onMessage(TaskMessage message, rabbitmq:Caller caller) returns error? {
         do {
             IntegrationTask task = message.content.integrationTask;
-            log:printInfo("Received order template sync task. Task ID: " + task.TaskId.toString());
+            log:printInfo("received order template sync task" , task = task);
             check performSyncOnMinfos(message.content.updatedTemplate);
-            check caller->basicAck();
             check updateIntegrationLogTable(task.TaskId, "Complete", task.Scope);
+            check caller->basicAck();
         } on fail error taskError {
             check caller->basicNack(requeue = true);
-            log:printError(string `Error occurred while processing the task: ${taskError.message()}. Re-queuing the task.`, taskError);
+            log:printError(string `error occurred while processing the task: ${taskError.message()}. re-queued the task.`, taskError);
             return taskError;
         }
     }
@@ -98,15 +98,17 @@ type IntegrationLog record {|
 |};
 
 function performSyncOnMinfos(IO_DWH_OrderTemplate updatedTemplate) returns error? {
+
+    log:printInfo("performing sync on minfos", updatedTemplate = updatedTemplate);
     soap12:Client soapClient = check new (MOCKSERVER_URL);
     xml|mime:Entity[] response = check soapClient->sendReceive(getTemplates, "http://tempuri.org/IOrdersService/GetOrderTemplates");
     if response is xml {
         if !templateExists(response) {
             _ = check soapClient->sendOnly(getCreateTemplate(updatedTemplate), "http://tempuri.org/IOrdersService/CreateOrderTemplate");
-            log:printInfo("Order template created.");
+            log:printInfo("Order template created.", updatedTemplate = updatedTemplate);
         } else if templateUpdated(updatedTemplate, response) {
             check soapClient->sendOnly(getEditTemplate(updatedTemplate), "http://tempuri.org/IOrdersService/EditOrderTemplate");
-            log:printInfo("Order template edited.");
+            log:printInfo("Order template edited.", updatedTemplate = updatedTemplate);
         }
     }
 }
@@ -202,8 +204,8 @@ isolated function updateIntegrationLogTable(int taskID, string status, string sc
     `);
     int|string? lastInsertId = result.lastInsertId;
     if lastInsertId is int {
-        log:printInfo("Logged status " + log.Status + " for the task " + log.TaskID.toString() + ".");
+        log:printInfo("logged task", taskId = taskID, taskStatus = status, scope = scope);
     } else {
-        return error("Unable to obtain last insert ID for the log.");
+        return error("unable to obtain last insert ID for the log.");
     }
 }
