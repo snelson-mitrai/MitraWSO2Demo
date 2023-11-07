@@ -18,6 +18,7 @@ configurable string RABBITMQ_VHOST = ?;
 configurable string DB_USER = ?;
 configurable string DB_PASSWORD = ?;
 configurable string DB_HOST = ?;
+configurable string INTEGRATION_DB = ?;
 int DB_PORT = 3306;
 
 rabbitmq:ConnectionConfiguration config = {username: RABBITMQ_USER, password: RABBITMQ_PW, virtualHost: RABBITMQ_VHOST};
@@ -184,7 +185,7 @@ xml getTemplates =
 </soapenv:Envelope>`;
 
 final mysql:Client integrationDbClient = check new (
-    host = DB_HOST, user = DB_USER, password = DB_PASSWORD, port = DB_PORT, database = "Integration"
+    host = DB_HOST, user = DB_USER, password = DB_PASSWORD, port = DB_PORT, database = INTEGRATION_DB
 );
 
 isolated function updateIntegrationLogTable(int taskID, string status, string scope) returns error? {
