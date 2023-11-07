@@ -8,7 +8,7 @@ import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
 
 const queueName = "TaskQueue";
-
+configurable string MOCKSERVER_URL = ?;
 configurable int RABBITMQ_PORT = ?;
 configurable string RABBITMQ_HOST = ?;
 configurable string RABBITMQ_USER = ?;
@@ -97,7 +97,7 @@ type IntegrationLog record {|
 |};
 
 function performSyncOnMinfos(IO_DWH_OrderTemplate updatedTemplate) returns error? {
-    soap12:Client soapClient = check new ("localhost:8086");
+    soap12:Client soapClient = check new (MOCKSERVER_URL);
     xml|mime:Entity[] response = check soapClient->sendReceive(getTemplates, "http://tempuri.org/IOrdersService/GetOrderTemplates");
     if response is xml {
         if !templateExists(response) {
