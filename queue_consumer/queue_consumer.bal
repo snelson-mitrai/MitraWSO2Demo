@@ -2,6 +2,23 @@ import ballerina/log;
 import ballerina/mime;
 import ballerina/soap.soap12;
 import ballerinax/rabbitmq;
+import ballerina/time;
+import ballerina/sql;
+import ballerinax/mysql;
+import ballerinax/mysql.driver as _;
+
+const queueName = "TaskQueue";
+
+configurable int RABBITMQ_PORT = ?;
+configurable string RABBITMQ_HOST = ?;
+configurable string RABBITMQ_USER = ?;
+configurable string RABBITMQ_PW = ?;
+configurable string RABBITMQ_VHOST = ?;
+
+configurable string DB_USER = ?;
+configurable string DB_PASSWORD = ?;
+configurable string DB_HOST = ?;
+int DB_PORT = 3306;
 
 rabbitmq:ConnectionConfiguration config = {username: RABBITMQ_USER, password: RABBITMQ_PW, virtualHost: RABBITMQ_VHOST};
 xmlns "http://schemas.datacontract.org/2004/07/NuPro.Midas.Services.Orders.Models" as nup;
@@ -25,6 +42,59 @@ service rabbitmq:Service on new rabbitmq:Listener(RABBITMQ_HOST, RABBITMQ_PORT, 
         }
     }
 }
+
+type TaskMessage record {|
+    *rabbitmq:AnydataMessage;
+    TaskData content;
+|};
+
+type TaskData record {|
+    IntegrationTask integrationTask;
+    IO_DWH_OrderTemplate updatedTemplate;
+|};
+
+type IntegrationTask record {|
+    int TaskId;
+    time:Civil CreatedDatetime;
+    time:Civil ModifiedDatetime;
+    time:Utc ValidFromUTC;
+    time:Utc ValidToUTC;
+    string Type;
+    string Scope;
+|};
+
+type IO_DWH_OrderTemplate record {|
+    int TemplateID;
+    string Category;
+    int CategoryRangeEnd;
+    int CategoryRangeStart;
+    int CompanyRangeEnd;
+    int CompanyRangeStart;
+    int DeliveryTime;
+    string Description;
+    boolean IncludeBuyingDeals;
+    boolean IncludeNegatives;
+    boolean IncludeOutOfStocks;
+    boolean IncludeUncollectedScripts;
+    string OrderContent;
+    int OrderPeriodDays;
+    string OrderType;
+    int RoundUpAfter;
+    time:Date RunDate;
+    string RunFrequency;
+    int ShelfPackRound;
+    string Supplier;
+    boolean UseDefaultSuppliers;
+    int ZFactor;
+|};
+
+type IntegrationLog record {|
+    int? LogID = ();
+    int TaskID;
+    string Status;
+    string Scope;
+    time:Utc Timestamp;
+|};
 
 function performSyncOnMinfos(IO_DWH_OrderTemplate updatedTemplate) returns error? {
     soap12:Client soapClient = check new ("localhost:8086");
@@ -112,3 +182,27 @@ xml getTemplates =
       <tem:GetOrderTemplates/>
    </soapenv:Body>
 </soapenv:Envelope>`;
+
+final mysql:Client integrationDbClient = check new (
+    host = DB_HOST, user = DB_USER, password = DB_PASSWORD, port = DB_PORT, database = "Integration"
+);
+
+isolated function updateIntegrationLogTable(int taskID, string status, string scope) returns error? {
+    IntegrationLog log = {
+        TaskID: taskID,
+        Status: status,
+        Scope: scope,
+        Timestamp: time:utcNow()
+    };
+
+    sql:ExecutionResult result = check integrationDbClient->execute(`
+        INSERT INTO Log (TaskID, Status, Scope, Timestamp)
+        VALUES (${log.TaskID}, ${log.Status}, ${log.Scope}, ${log.Timestamp})
+    `);
+    int|string? lastInsertId = result.lastInsertId;
+    if lastInsertId is int {
+        log:printInfo("Logged status " + log.Status + " for the task " + log.TaskID.toString() + ".");
+    } else {
+        return error("Unable to obtain last insert ID for the log.");
+    }
+}
