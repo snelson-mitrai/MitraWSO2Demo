@@ -17,8 +17,9 @@ service / on new http:Listener(8080) {
     }
 
     isolated resource function post .(@http:Payload EventData event) returns string|error {
+        log:printInfo("order template sync event received.", event = event);
         IntegrationTask orderTemplateSyncTask = check lookUpIntegrationTaskTable(event);
-        log:printInfo("Order template sync task received.");
+        log:printInfo("order template sync task loaded from database", orderTemplateSyncTask = orderTemplateSyncTask);
 
         check updateIntegrationLogTable(orderTemplateSyncTask.TaskId, "In-Progress", orderTemplateSyncTask.Scope);
 
@@ -145,7 +146,7 @@ isolated function updateIntegrationLogTable(int taskID, string status, string sc
     `);
     int|string? lastInsertId = result.lastInsertId;
     if lastInsertId is int {
-        log:printInfo("Logged status " + log.Status + " for the task " + log.TaskID.toString() + ".");
+        log:printInfo("logged task", taskId = taskID, taskStatus = status, scope = scope);
     } else {
         return error("Unable to obtain last insert ID for the log.");
     }
