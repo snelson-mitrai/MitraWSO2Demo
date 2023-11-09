@@ -1,34 +1,23 @@
 import ballerina/log;
 import ballerina/mime;
 import ballerina/soap.soap12;
-import ballerinax/rabbitmq;
-import ballerina/time;
 import ballerina/sql;
+import ballerina/time;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
+import ballerinax/rabbitmq;
 
-configurable string  QUEQUE_NAME = "q_order_template_sync";
-configurable string MOCKSERVER_URL = ?;
-configurable int RABBITMQ_PORT = ?;
-configurable string RABBITMQ_HOST = ?;
-configurable string RABBITMQ_USER = ?;
-configurable string RABBITMQ_PW = ?;
-configurable string RABBITMQ_VHOST = ?;
+final mysql:Client integrationDbClient = check new (
+    host = dbHost, user = dbUser, password = dbPassword, port = 3306, database = integrationDb
+);
 
-configurable string DB_USER = ?;
-configurable string DB_PASSWORD = ?;
-configurable string DB_HOST = ?;
-configurable string INTEGRATION_DB = ?;
-int DB_PORT = 3306;
-
-rabbitmq:ConnectionConfiguration config = {username: RABBITMQ_USER, password: RABBITMQ_PW, virtualHost: RABBITMQ_VHOST};
 xmlns "http://schemas.datacontract.org/2004/07/NuPro.Midas.Services.Orders.Models" as nup;
 
 @rabbitmq:ServiceConfig {
-    queueName: QUEQUE_NAME,
+    queueName,
     autoAck: false
 }
-service rabbitmq:Service on new rabbitmq:Listener(RABBITMQ_HOST, RABBITMQ_PORT, connectionData = config) {
+service rabbitmq:Service on new rabbitmq:Listener(rabbitMqHost, rabbitMqPort, connectionData = {username: rabbitMqUser, password: rabbitMqPassword, virtualHost: rabbitMqVhost}) {
     remote function onMessage(TaskMessage message, rabbitmq:Caller caller) returns error? {
         do {
             IntegrationTask task = message.content.integrationTask;
@@ -43,6 +32,112 @@ service rabbitmq:Service on new rabbitmq:Listener(RABBITMQ_HOST, RABBITMQ_PORT, 
         }
     }
 }
+
+function performSyncOnMinfos(IO_DWH_OrderTemplate updatedTemplate) returns error? {
+    log:printInfo("performing sync on minfos", updatedTemplate = updatedTemplate);
+    soap12:Client soapClient = check new (mockServerUrl);
+    xml|mime:Entity[] response = check soapClient->sendReceive(getTemplates, "http://tempuri.org/IOrdersService/GetOrderTemplates");
+    if response is xml {
+        if !templateExists(response) {
+            _ = check soapClient->sendOnly(getCreateTemplate(updatedTemplate), "http://tempuri.org/IOrdersService/CreateOrderTemplate");
+            log:printInfo("Order template created.", updatedTemplate = updatedTemplate);
+        } else if templateUpdated(updatedTemplate, response) {
+            check soapClient->sendOnly(getEditTemplate(updatedTemplate), "http://tempuri.org/IOrdersService/EditOrderTemplate");
+            log:printInfo("Order template edited.", updatedTemplate = updatedTemplate);
+        }
+    }
+}
+
+function getCreateTemplate(IO_DWH_OrderTemplate updatedTemplate) returns xml<xml:Element|xml:Comment|xml:ProcessingInstruction|xml:Text>|mime:Entity[] {
+    xml createTemplate =
+        xml `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:nup="http://schemas.datacontract.org/2004/07/NuPro.Midas.Services.Orders.Models">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:CreateOrderTemplate>
+         <tem:request>
+            <nup:Template>
+               <nup:Description>${updatedTemplate.Description}</nup:Description>
+               <nup:RunDate>${updatedTemplate.RunDate.toString()}</nup:RunDate>
+               <nup:RunFrequency>${updatedTemplate.RunFrequency}</nup:RunFrequency>
+               <nup:Supplier>${updatedTemplate.Supplier}</nup:Supplier>
+            </nup:Template>
+         </tem:request>
+      </tem:CreateOrderTemplate>
+   </soapenv:Body>
+</soapenv:Envelope>`;
+    return createTemplate;
+}
+
+function getEditTemplate(IO_DWH_OrderTemplate updatedTemplate) returns xml<xml:Element|xml:Comment|xml:ProcessingInstruction|xml:Text>|mime:Entity[] {
+    xml editTemplate =
+        xml `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:nup="http://schemas.datacontract.org/2004/07/NuPro.Midas.Services.Orders.Models">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:EditOrderTemplate>
+         <tem:request>
+            <nup:Template>
+               <nup:Description>${updatedTemplate.Description}</nup:Description>
+               <nup:RunDate>${updatedTemplate.RunDate.toString()}</nup:RunDate>
+               <nup:RunFrequency>${updatedTemplate.RunFrequency}</nup:RunFrequency>
+               <nup:Supplier>${updatedTemplate.Supplier}</nup:Supplier>
+            </nup:Template>
+         </tem:request>
+      </tem:EditOrderTemplate>
+   </soapenv:Body>
+</soapenv:Envelope>`;
+    return editTemplate;
+}
+
+function templateUpdated(IO_DWH_OrderTemplate updatedTemplate, xml response) returns boolean {
+    string description = (response/**/<nup:Description>).data();
+    if description != updatedTemplate.Description {
+        return true;
+    }
+    return false;
+}
+
+function templateExists(xml response) returns boolean {
+    string created = (response/**/<nup:Created>).data();
+    string description = (response/**/<nup:Description>).data();
+    if description == "" && created == "" {
+        return false;
+    }
+    return true;
+}
+
+xml getTemplates =
+        xml `<soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:GetOrderTemplates/>
+   </soapenv:Body>
+</soapenv:Envelope>`;
+
+isolated function updateIntegrationLogTable(int taskID, string status, string scope) returns error? {
+    sql:ExecutionResult result = check integrationDbClient->execute(`
+        INSERT INTO Log (TaskID, Status, Scope, Timestamp)
+        VALUES (${taskID}, ${status}, ${scope}, ${time:utcNow()})
+    `);
+    int|string? lastInsertId = result.lastInsertId;
+    if lastInsertId is int {
+        log:printInfo("logged task", taskId = taskID, taskStatus = status, scope = scope);
+    } else {
+        return error("unable to obtain last insert ID for the log.");
+    }
+}
+
+configurable string queueName = "q_order_template_sync";
+configurable string mockServerUrl = ?;
+configurable int rabbitMqPort = ?;
+configurable string rabbitMqHost = ?;
+configurable string rabbitMqUser = ?;
+configurable string rabbitMqPassword = ?;
+configurable string rabbitMqVhost = ?;
+
+configurable string dbUser = ?;
+configurable string dbPassword = ?;
+configurable string dbHost = ?;
+configurable string integrationDb = ?;
 
 type TaskMessage record {|
     *rabbitmq:AnydataMessage;
@@ -88,124 +183,3 @@ type IO_DWH_OrderTemplate record {|
     boolean UseDefaultSuppliers;
     int ZFactor;
 |};
-
-type IntegrationLog record {|
-    int? LogID = ();
-    int TaskID;
-    string Status;
-    string Scope;
-    time:Utc Timestamp;
-|};
-
-function performSyncOnMinfos(IO_DWH_OrderTemplate updatedTemplate) returns error? {
-
-    log:printInfo("performing sync on minfos", updatedTemplate = updatedTemplate);
-    soap12:Client soapClient = check new (MOCKSERVER_URL);
-    xml|mime:Entity[] response = check soapClient->sendReceive(getTemplates, "http://tempuri.org/IOrdersService/GetOrderTemplates");
-    if response is xml {
-        if !templateExists(response) {
-            _ = check soapClient->sendOnly(getCreateTemplate(updatedTemplate), "http://tempuri.org/IOrdersService/CreateOrderTemplate");
-            log:printInfo("Order template created.", updatedTemplate = updatedTemplate);
-        } else if templateUpdated(updatedTemplate, response) {
-            check soapClient->sendOnly(getEditTemplate(updatedTemplate), "http://tempuri.org/IOrdersService/EditOrderTemplate");
-            log:printInfo("Order template edited.", updatedTemplate = updatedTemplate);
-        }
-    }
-}
-
-function getCreateTemplate(IO_DWH_OrderTemplate updatedTemplate) returns xml<xml:Element|xml:Comment|xml:ProcessingInstruction|xml:Text>|mime:Entity[] {
-    string desc = updatedTemplate.Description;
-    string runDate = updatedTemplate.RunDate.toString();
-    string freq = updatedTemplate.RunFrequency;
-    string supplier = updatedTemplate.Supplier;
-    xml createTemplate =
-        xml `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:nup="http://schemas.datacontract.org/2004/07/NuPro.Midas.Services.Orders.Models">
-   <soapenv:Header/>
-   <soapenv:Body>
-      <tem:CreateOrderTemplate>
-         <tem:request>
-            <nup:Template>
-               <nup:Description>${desc}</nup:Description>
-               <nup:RunDate>${runDate}</nup:RunDate>
-               <nup:RunFrequency>${freq}</nup:RunFrequency>
-               <nup:Supplier>${supplier}</nup:Supplier>
-            </nup:Template>
-         </tem:request>
-      </tem:CreateOrderTemplate>
-   </soapenv:Body>
-</soapenv:Envelope>`;
-    return createTemplate;
-}
-
-function getEditTemplate(IO_DWH_OrderTemplate updatedTemplate) returns xml<xml:Element|xml:Comment|xml:ProcessingInstruction|xml:Text>|mime:Entity[] {
-    string desc = updatedTemplate.Description;
-    string runDate = updatedTemplate.RunDate.toString();
-    string freq = updatedTemplate.RunFrequency;
-    string supplier = updatedTemplate.Supplier;
-    xml editTemplate =
-        xml `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:nup="http://schemas.datacontract.org/2004/07/NuPro.Midas.Services.Orders.Models">
-   <soapenv:Header/>
-   <soapenv:Body>
-      <tem:EditOrderTemplate>
-         <tem:request>
-            <nup:Template>
-               <nup:Description>${desc}</nup:Description>
-               <nup:RunDate>${runDate}</nup:RunDate>
-               <nup:RunFrequency>${freq}</nup:RunFrequency>
-               <nup:Supplier>${supplier}</nup:Supplier>
-            </nup:Template>
-         </tem:request>
-      </tem:EditOrderTemplate>
-   </soapenv:Body>
-</soapenv:Envelope>`;
-    return editTemplate;
-}
-
-function templateUpdated(IO_DWH_OrderTemplate updatedTemplate, xml response) returns boolean {
-    string description = (response/**/<nup:Description>).data();
-    if description != updatedTemplate.Description {
-        return true;
-    }
-    return false;
-}
-
-function templateExists(xml response) returns boolean {
-    string created = (response/**/<nup:Created>).data();
-    string description = (response/**/<nup:Description>).data();
-    if description == "" && created == "" {
-        return false;
-    }
-    return true;
-}
-
-xml getTemplates =
-        xml `<soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope" xmlns:tem="http://tempuri.org/">
-   <soapenv:Header/>
-   <soapenv:Body>
-      <tem:GetOrderTemplates/>
-   </soapenv:Body>
-</soapenv:Envelope>`;
-
-final mysql:Client integrationDbClient = check new (
-    host = DB_HOST, user = DB_USER, password = DB_PASSWORD, port = DB_PORT, database = INTEGRATION_DB
-);
-
-isolated function updateIntegrationLogTable(int taskID, string status, string scope) returns error? {
-    IntegrationLog log = {
-        TaskID: taskID,
-        Status: status,
-        Scope: scope,
-        Timestamp: time:utcNow()
-    };
-
-    sql:ExecutionResult result = check integrationDbClient->execute(`
-        INSERT INTO Log (TaskID, Status, Scope, Timestamp)
-        VALUES (${log.TaskID}, ${log.Status}, ${log.Scope}, ${log.Timestamp})
-    `);
-    int|string? lastInsertId = result.lastInsertId;
-    if lastInsertId is int {
-        log:printInfo("logged task", taskId = taskID, taskStatus = status, scope = scope);
-    } else {
-        return error("unable to obtain last insert ID for the log.");
-    }
-}
