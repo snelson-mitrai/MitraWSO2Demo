@@ -6,13 +6,20 @@ import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
 import ballerinax/rabbitmq;
 
+final mysql:Client integrationDbClient = check new (
+    host = dbHost, user = dbUser, password = dbPassword, port = 3306, database = integrationDb
+);
+
+final mysql:Client IO_DWHDbClient = check new (
+    host = dbHost, user = dbUser, password = dbPassword, port = 3306, database = iodwhDb
+);
+
 service / on new http:Listener(8080) {
-    private final rabbitmq:Client rabbitmqConnection;
+    private final rabbitmq:Client 'rabbitmq;
 
     function init() returns error? {
-        rabbitmq:ConnectionConfiguration config = {username: RABBITMQ_USER, password: RABBITMQ_PW, virtualHost: RABBITMQ_VHOST};
-        self.rabbitmqConnection = check new (RABBITMQ_HOST, RABBITMQ_PORT, config);
-        check self.rabbitmqConnection->queueDeclare(QUEUE_NAME);
+        self.'rabbitmq = check new (rabbitMqHost, rabbitMqPort, {username: rabbitMqUser, password: rabbitMqPassword, virtualHost: rabbitMqVhost});
+        check self.'rabbitmq->queueDeclare(queueName);
         log:printInfo("Listening on order template sync tasks.");
     }
 
@@ -29,33 +36,56 @@ service / on new http:Listener(8080) {
 
         TaskMessage taskMessage = {
             content: {integrationTask: orderTemplateSyncTask, updatedTemplate: updatedTemplate},
-            routingKey: QUEUE_NAME
+            routingKey: queueName
         };
-        error? queueResult = self.rabbitmqConnection->publishMessage(taskMessage);
+        error? queueResult = self.'rabbitmq->publishMessage(taskMessage);
         if queueResult is error {
             log:printError(string `Error occurred while queuing the task: ${queueResult.message()}`, queueResult);
             return queueResult;
         }
-        
+
         return "success";
     }
 }
 
+isolated function lookUpIntegrationTaskTable(EventData event) returns IntegrationTask|error {
+    return check integrationDbClient->queryRow(`SELECT * FROM Task WHERE type = ${taskType}`);
+}
+
+isolated function updateIntegrationLogTable(int taskID, string status, string scope) returns error? {
+    sql:ExecutionResult result = check integrationDbClient->execute(`
+        INSERT INTO Log (TaskID, Status, Scope, Timestamp)
+        VALUES (${taskID}, ${status}, ${scope}, ${time:utcNow()})
+    `);
+    int|string? lastInsertId = result.lastInsertId;
+    if lastInsertId is int {
+        log:printInfo("Logged status " + status + " for the task " + taskID.toString() + ".");
+    } else {
+        return error("Unable to obtain last insert ID for the log.");
+    }
+}
+
+isolated function lookUpUpdatedOrderTemplate(int templateID) returns IO_DWH_OrderTemplate|error {
+    IO_DWH_OrderTemplate updatedTemplate = check IO_DWHDbClient->queryRow(
+        `SELECT * FROM OrderTemplate WHERE TemplateID = ${templateID}`
+    );
+    return updatedTemplate;
+}
+
 const taskType = "Order Template Sync";
-configurable string  QUEUE_NAME = "q_order_template_sync";
+configurable string queueName = "q_order_template_sync";
 
-configurable int RABBITMQ_PORT = ?;
-configurable string RABBITMQ_HOST = ?;
-configurable string RABBITMQ_USER = ?;
-configurable string RABBITMQ_PW = ?;
-configurable string RABBITMQ_VHOST = ?;
+configurable int rabbitMqPort = ?;
+configurable string rabbitMqHost = ?;
+configurable string rabbitMqUser = ?;
+configurable string rabbitMqPassword = ?;
+configurable string rabbitMqVhost = ?;
 
-configurable string DB_USER = ?;
-configurable string DB_PASSWORD = ?;
-configurable string DB_HOST = ?;
-int DB_PORT = 3306;
-configurable string INTEGRATION_DB = ?;
-configurable string IO_DWH_DB = ?;
+configurable string dbUser = ?;
+configurable string dbPassword = ?;
+configurable string dbHost = ?;
+configurable string integrationDb = ?;
+configurable string iodwhDb = ?;
 
 type TaskMessage record {|
     *rabbitmq:AnydataMessage;
@@ -87,14 +117,6 @@ type IntegrationTask record {|
     string Scope;
 |};
 
-type IntegrationLog record {|
-    int? LogID = ();
-    int TaskID;
-    string Status;
-    string Scope;
-    time:Utc Timestamp;
-|};
-
 type IO_DWH_OrderTemplate record {|
     int TemplateID;
     string Category;
@@ -119,38 +141,3 @@ type IO_DWH_OrderTemplate record {|
     boolean UseDefaultSuppliers;
     int ZFactor;
 |};
-
-final mysql:Client integrationDbClient = check new (
-    host = DB_HOST, user = DB_USER, password = DB_PASSWORD, port = DB_PORT, database = INTEGRATION_DB
-);
-
-final mysql:Client IO_DWHDbClient = check new (
-    host = DB_HOST, user = DB_USER, password = DB_PASSWORD, port = DB_PORT, database = IO_DWH_DB
-);
-
-isolated function lookUpIntegrationTaskTable(EventData event) returns IntegrationTask|error {
-    IntegrationTask task = check integrationDbClient->queryRow(
-        `SELECT * FROM Task WHERE type = ${taskType}`
-    );
-    return task;
-}
-
-isolated function updateIntegrationLogTable(int taskID, string status, string scope) returns error? {
-    sql:ExecutionResult result = check integrationDbClient->execute(`
-        INSERT INTO Log (TaskID, Status, Scope, Timestamp)
-        VALUES (${taskID}, ${status}, ${scope}, ${time:utcNow()})
-    `);
-    int|string? lastInsertId = result.lastInsertId;
-    if lastInsertId is int {
-        log:printInfo("logged task", taskId = taskID, taskStatus = status, scope = scope);
-    } else {
-        return error("Unable to obtain last insert ID for the log.");
-    }
-}
-
-isolated function lookUpUpdatedOrderTemplate(int templateID) returns IO_DWH_OrderTemplate|error {
-    IO_DWH_OrderTemplate updatedTemplate = check IO_DWHDbClient->queryRow(
-        `SELECT * FROM OrderTemplate WHERE TemplateID = ${templateID}`
-    );
-    return updatedTemplate;
-}
