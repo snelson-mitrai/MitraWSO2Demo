@@ -34,15 +34,16 @@ service rabbitmq:Service on new rabbitmq:Listener(rabbitMqHost, rabbitMqPort, co
 }
 
 function performSyncOnMinfos(IO_DWH_OrderTemplate updatedTemplate) returns error? {
+    log:printInfo("performing sync on minfos", updatedTemplate = updatedTemplate);
     soap12:Client soapClient = check new (mockServerUrl);
     xml|mime:Entity[] response = check soapClient->sendReceive(getTemplates, "http://tempuri.org/IOrdersService/GetOrderTemplates");
     if response is xml {
         if !templateExists(response) {
             _ = check soapClient->sendOnly(getCreateTemplate(updatedTemplate), "http://tempuri.org/IOrdersService/CreateOrderTemplate");
-            log:printInfo("Order template created.");
+            log:printInfo("Order template created.", updatedTemplate = updatedTemplate);
         } else if templateUpdated(updatedTemplate, response) {
             check soapClient->sendOnly(getEditTemplate(updatedTemplate), "http://tempuri.org/IOrdersService/EditOrderTemplate");
-            log:printInfo("Order template edited.");
+            log:printInfo("Order template edited.", updatedTemplate = updatedTemplate);
         }
     }
 }
@@ -119,9 +120,9 @@ isolated function updateIntegrationLogTable(int taskID, string status, string sc
     `);
     int|string? lastInsertId = result.lastInsertId;
     if lastInsertId is int {
-        log:printInfo("Logged status " + status + " for the task " + taskID.toString() + ".");
+        log:printInfo("logged task", taskId = taskID, taskStatus = status, scope = scope);
     } else {
-        return error("Unable to obtain last insert ID for the log.");
+        return error("unable to obtain last insert ID for the log.");
     }
 }
 

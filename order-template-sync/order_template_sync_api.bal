@@ -59,9 +59,9 @@ isolated function updateIntegrationLogTable(int taskID, string status, string sc
     `);
     int|string? lastInsertId = result.lastInsertId;
     if lastInsertId is int {
-        log:printInfo("Logged status " + status + " for the task " + taskID.toString() + ".");
+        log:printInfo("logged task", taskId = taskID, taskStatus = status, scope = scope);
     } else {
-        return error("Unable to obtain last insert ID for the log.");
+        return error("unable to obtain last insert ID for the log.");
     }
 }
 
